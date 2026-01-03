@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HIROMA GAMES</title>
+  <meta name="description" content="ミニゲーム集（クリックで別タブで起動）" />
+  <style>
+    :root{
+      --bg:#f6f7fb; --panel:#fff; --text:#0f172a; --muted:#64748b;
+      --line:#e5e7eb; --shadow:0 10px 30px rgba(2,6,23,.08);
+      --shadow2:0 16px 40px rgba(2,6,23,.12); --radius:18px;
+      --accent: rgba(59,130,246,.18);
+      --accentLine: rgba(59,130,246,.45);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(900px 500px at 20% -10%, rgba(59,130,246,.10), transparent 60%),
+        radial-gradient(900px 500px at 90% 0%, rgba(16,185,129,.10), transparent 55%),
+        var(--bg);
+    }
+    .wrap{width:min(1100px, calc(100% - 32px)); margin:0 auto}
+    .header{padding:34px 0 18px}
+    .brand h1{margin:0; font-size:28px; letter-spacing:.02em}
+    .subtitle{margin:6px 0 0; color:var(--muted); font-size:14px}
+    .status{margin:10px 0 0; color:var(--muted); font-size:12px}
+
+    .main{padding:10px 0 40px}
+
+    .section{margin-top:18px}
+    .sectionHead{
+      display:flex; align-items:baseline; gap:10px;
+      margin:18px 0 10px;
+    }
+    .sectionHead h2{margin:0; font-size:18px}
+    .sectionHead .note{color:var(--muted); font-size:12px}
+
+    .grid{display:grid; grid-template-columns:repeat(12, 1fr); gap:16px}
+
+    .card{
+      grid-column:span 12;
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      overflow:hidden;
+      box-shadow:var(--shadow);
+      text-decoration:none;
+      color:inherit;
+      transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+      display:grid;
+      grid-template-columns:220px 1fr;
+      min-height:140px;
+      position: relative;
+    }
+    .card:hover{
+      transform:translateY(-3px);
+      box-shadow:var(--shadow2);
+      border-color:rgba(59,130,246,.35);
+    }
+    .thumb{width:100%; height:100%; object-fit:cover; background:#eef2ff}
+    .content{padding:16px 16px 14px; display:flex; flex-direction:column; gap:8px}
+    .title{font-size:18px; margin:0}
+    .desc{margin:0; color:var(--muted); font-size:14px; line-height:1.5}
+
+    .meta{
+      margin-top:auto;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      color:var(--muted);
+      font-size:12px;
+      flex-wrap: wrap;
+    }
+    .pill{
+      border:1px solid var(--line);
+      background:#fbfcff;
+      padding:6px 10px;
+      border-radius:999px;
+      white-space:nowrap;
+    }
+
+    .likeBtn{
+      margin-left: auto;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      border:1px solid var(--line);
+      background:#fbfcff;
+      padding:6px 10px;
+      border-radius:999px;
+      cursor:pointer;
+      font: inherit;
+      color: inherit;
+      transition: background .16s ease, border-color .16s ease, transform .06s ease;
+      user-select: none;
+    }
+    .likeBtn:active{ transform: scale(0.98); }
+    .likeBtn:hover{ border-color: rgba(59,130,246,.30); }
+    .likeBtn.liked{
+      background: var(--accent);
+      border-color: var(--accentLine);
+    }
+    .likeCount{
+      min-width: 2em;
+      text-align: right;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .likeBtn.liked .likeCount{ color: var(--text); }
+
+    .empty{
+      grid-column:span 12;
+      padding:14px 14px;
+      border:1px dashed var(--line);
+      border-radius:var(--radius);
+      color:var(--muted);
+      background:rgba(255,255,255,.6);
+    }
+
+    .footer{
+      padding:22px 0 30px;
+      color:var(--muted);
+      border-top:1px solid rgba(229,231,235,.8);
+      background:rgba(255,255,255,.35);
+      backdrop-filter:blur(6px);
+      margin-top:24px;
+    }
+
+    @media (min-width:640px){
+      .card{grid-column:span 6; grid-template-columns:1fr}
+      .thumb{height:170px}
+    }
+    @media (min-width:920px){
+      .card{grid-column:span 4}
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="wrap">
+      <div class="brand">
+        <h1>HIROMA GAMES</h1>
+        <p class="subtitle">ミニゲーム集（クリックで別タブで起動）</p>
+        <div id="status" class="status">接続中...</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="wrap" id="root"></div>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap"><small>© HIROMA GAMES</small></div>
+  </footer>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-app.js";
+    import {
+      getAuth,
+      signInAnonymously,
+      onAuthStateChanged,
+      setPersistence,
+      browserLocalPersistence
+    } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
+    import { getDatabase, ref, onValue, runTransaction } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-database.js";
+
+    // ====== ここを自分のFirebase設定に差し替え ======
+    const firebaseConfig = {
+  apiKey: "AIzaSyAqPLGm8cBnv9PLUiK4g5DxdBsRgtjpw04",
+  authDomain: "hiroma-games.firebaseapp.com",
+  projectId: "hiroma-games",
+  databaseURL: "https://hiroma-games-default-rtdb.firebaseio.com",
+  storageBucket: "hiroma-games.firebasestorage.app",
+  messagingSenderId: "102709511894",
+  appId: "1:102709511894:web:d7e9d0c537b095e8c7eb77",
+  measurementId: "G-DT0MQQFS94"
+};
+    // ==============================================
+
+    // 分類: playersType = "solo" | "two" | "multi"
+    const GAMES = [
+      {
+        id: "marubatu",
+        title: "〇×ゲーム",
+        url: "https://hiromasa5450.github.io/marubatu/",
+        description: "三個揃えたら勝ち",
+        playersType: "two",
+        order: 1
+      },
+      {
+        id: "chari3",
+        title: "白黒チャリ走",
+        url: "https://hiromasa5450.github.io/chari3/",
+        description: "障害物をよけて走れ",
+        playersType: "solo",
+        order: 2
+      }
+    ];
+
+    const SECTION_DEFS = [
+      { key: "solo",  title: "1人プレイ",    note: "ひとりで黙々と" },
+      { key: "two",   title: "2人プレイ",    note: "対戦・協力" },
+      { key: "multi", title: "多人数プレイ", note: "みんなでワイワイ" }
+    ];
+
+    // 共通の仮サムネ（SVGをData URIで埋め込み）
+    const PLACEHOLDER_THUMB = (() => {
+      const svg = `
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2f4f8"/>
+      <stop offset="1" stop-color="#e7ebf3"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" rx="48" fill="url(#g)"/>
+  <g fill="none" stroke="#c9d1e2" stroke-width="10" opacity="0.9">
+    <rect x="120" y="110" width="960" height="410" rx="36"/>
+    <path d="M200 420 L420 260 L560 360 L720 210 L980 420"/>
+    <circle cx="360" cy="220" r="34"/>
+  </g>
+  <text x="600" y="560" text-anchor="middle"
+        font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
+        font-size="34" fill="#7a879f">HIROMA GAMES</text>
+</svg>`.trim();
+      return "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    })();
+
+    const statusEl = document.getElementById("status");
+    const root = document.getElementById("root");
+
+    function setStatus(text) { statusEl.textContent = text; }
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function cardHtml(g, sectionTitle) {
+      const t = escapeHtml(g.title);
+      const d = escapeHtml(g.description);
+      const u = escapeHtml(g.url);
+      const id = escapeHtml(g.id);
+      const thumb = escapeHtml(g.thumbnail || PLACEHOLDER_THUMB);
+
+      return `
+        <a class="card" href="${u}" target="_blank" rel="noopener noreferrer" role="listitem" aria-label="${t}">
+          <img class="thumb" src="${thumb}" alt="${t} サムネイル" loading="lazy"
+               onerror="this.src='${PLACEHOLDER_THUMB}'" />
+          <div class="content">
+            <h3 class="title">${t}</h3>
+            <p class="desc">${d}</p>
+            <div class="meta">
+              <span class="pill">別タブで起動</span>
+              <span class="pill">${escapeHtml(sectionTitle)}</span>
+
+              <button class="likeBtn" type="button" data-like-id="${id}" aria-label="${t} にいいね">
+                <span class="likeLabel">いいね</span>
+                <span class="likeCount" data-like-count="${id}">0</span>
+              </button>
+            </div>
+          </div>
+        </a>
+      `;
+    }
+
+    function renderSection(secKey, title, note) {
+      const list = [...GAMES]
+        .filter(g => g.playersType === secKey)
+        .sort((a,b) => (a.order ?? 999) - (b.order ?? 999));
+
+      const cards = list.length
+        ? list.map(g => cardHtml(g, title)).join("")
+        : `<div class="empty">まだこのカテゴリにはゲームがありません。</div>`;
+
+      return `
+        <section class="section" aria-label="${escapeHtml(title)}">
+          <div class="sectionHead">
+            <h2>${escapeHtml(title)}</h2>
+            <span class="note">${escapeHtml(note)}</span>
+          </div>
+          <div class="grid" role="list">${cards}</div>
+        </section>
+      `;
+    }
+
+    function renderAll() {
+      root.innerHTML = SECTION_DEFS.map(s => renderSection(s.key, s.title, s.note)).join("");
+    }
+
+    // ===== Firebase 初期化 =====
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+    let currentUid = null;
+
+    // 重要: 共有いいね数は「認証前」でも購読開始（別タブでも即反映させる）
+    function attachCountListeners() {
+      for (const g of GAMES) {
+        const gameId = g.id;
+        const countRef = ref(db, `games/${gameId}/likeCount`);
+        onValue(countRef, (snap) => {
+          const v = snap.val();
+          const n = (typeof v === "number" && isFinite(v)) ? v : 0;
+          const el = document.querySelector(`[data-like-count="${CSS.escape(gameId)}"]`);
+          if (el) el.textContent = String(n);
+        });
+      }
+    }
+
+    // 自分が押したか（ハイライト）だけ、UIDが取れてから購読
+    function attachMyLikeListeners(uid) {
+      for (const g of GAMES) {
+        const gameId = g.id;
+        const mineRef = ref(db, `games/${gameId}/likes/${uid}`);
+        onValue(mineRef, (snap) => {
+          const liked = snap.exists();
+          const btn = document.querySelector(`.likeBtn[data-like-id="${CSS.escape(gameId)}"]`);
+          if (btn) btn.classList.toggle("liked", liked);
+        });
+      }
+    }
+
+    async function toggleLike(gameId) {
+      if (!currentUid) throw new Error("未認証");
+
+      const gameRef = ref(db, `games/${gameId}`);
+      await runTransaction(gameRef, (data) => {
+        if (data === null || typeof data !== "object") {
+          data = { likeCount: 0, likes: {} };
+        }
+        if (typeof data.likeCount !== "number" || !isFinite(data.likeCount)) data.likeCount = 0;
+        if (!data.likes || typeof data.likes !== "object") data.likes = {};
+
+        const liked = !!data.likes[currentUid];
+
+        if (liked) {
+          delete data.likes[currentUid];
+          data.likeCount = Math.max(0, data.likeCount - 1);
+        } else {
+          data.likes[currentUid] = true;
+          data.likeCount = data.likeCount + 1;
+        }
+
+        return data;
+      });
+    }
+
+    // ===== 起動 =====
+    renderAll();
+    attachCountListeners();
+
+    // いいねクリック（リンク遷移を止める）
+    root.addEventListener("click", async (ev) => {
+      const btn = ev.target.closest(".likeBtn");
+      if (!btn) return;
+
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const id = btn.getAttribute("data-like-id");
+      if (!id) return;
+
+      btn.disabled = true;
+      try {
+        await toggleLike(id);
+      } catch (e) {
+        console.error(e);
+        setStatus("いいね更新に失敗。コンソールを確認");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // タブ間で同じ匿名ユーザーになりやすくする（明示）
+    setStatus("認証中...");
+    await setPersistence(auth, browserLocalPersistence);
+
+    signInAnonymously(auth).catch((e) => {
+      console.error(e);
+      setStatus("認証エラー。Authorized domainsを確認");
+    });
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) return;
+      currentUid = user.uid;
+      setStatus("接続中");
+      attachMyLikeListeners(currentUid);
+    });
+  </script>
+</body>
+</html>
